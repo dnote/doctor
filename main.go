@@ -1,0 +1,136 @@
+package main
+
+import (
+	"bytes"
+	"flag"
+	"fmt"
+	"os"
+	"os/exec"
+	"os/user"
+	"time"
+
+	"github.com/dnote/fileutils"
+	"github.com/pkg/errors"
+)
+
+var (
+	homeDirPath = flag.String("homeDir", "", "the full path to the home directory")
+)
+
+const (
+	backupModeCopy = iota
+	backupModeRename
+)
+
+func debug(msg string, v ...interface{}) {
+	if os.Getenv("DNOTE_DOCTOR_DEBUG") == "1" {
+		fmt.Printf("DEBUG: %s\n", fmt.Sprintf(msg, v...))
+	}
+}
+
+func getDnoteDirPath() string {
+	return fmt.Sprintf("%s/.dnote", *homeDirPath)
+}
+
+// backupDnoteDir backs up the dnote directory to a temporary backup directory
+func backupDnoteDir(mode int) (string, error) {
+	dnoteDirPath := getDnoteDirPath()
+	backupName := fmt.Sprintf(".dnote-backup-%d", time.Now().Unix())
+	backupPath := fmt.Sprintf("%s/%s", *homeDirPath, backupName)
+
+	debug("backing up %s to %s", dnoteDirPath, backupPath)
+
+	var err error
+	switch mode {
+	case backupModeCopy:
+		err = fileutils.CopyDir(dnoteDirPath, backupPath)
+	case backupModeRename:
+		err = os.Rename(dnoteDirPath, backupPath)
+	}
+
+	if err != nil {
+		return backupPath, errors.Wrapf(err, "backing up %s using %d mode", dnoteDirPath, mode)
+	}
+
+	return backupPath, nil
+
+}
+
+func restoreBackup(backupPath string) error {
+	var err error
+
+	defer func() {
+		if err != nil {
+			fmt.Printf(`Failed to restore backup from dnote doctor.
+	Don't worry. Your data is still intact in the backup.
+	Please reach out on https://github.com/dnote/cli/issues so that we can help you.`)
+		}
+	}()
+
+	srcPath := fmt.Sprintf("%s/.dnote", *homeDirPath)
+
+	if err = os.RemoveAll(srcPath); err != nil {
+		return errors.Wrapf(err, "Failed to clear current dnote data at %s", backupPath)
+	}
+
+	if err = os.Rename(backupPath, srcPath); err != nil {
+		return errors.Wrap(err, `Failed to copy backup data to the original directory.`)
+	}
+
+	return nil
+}
+
+func checkVersion() (string, error) {
+	backupPath, err := backupDnoteDir(backupModeRename)
+	if err != nil {
+		return "", errors.Wrap(err, "backing up dnote")
+	}
+
+	cmd := exec.Command("dnote", "version")
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return "", errors.Wrap(err, "running dnote version")
+	}
+
+	fmt.Println(stdout.String())
+
+	err = restoreBackup(backupPath)
+	if err != nil {
+		return "", errors.Wrap(err, "restoring backup")
+	}
+
+	return "", nil
+}
+
+func parseFlag() error {
+	flag.Parse()
+
+	if *homeDirPath == "" {
+		usr, err := user.Current()
+		if err != nil {
+			return errors.Wrap(err, "getting the current user")
+		}
+
+		// set home dir
+		homeDirPath = &usr.HomeDir
+	}
+
+	return nil
+}
+
+func main() {
+	os.Setenv("DNOTE_DOCTOR_DEBUG", "1")
+
+	if err := parseFlag(); err != nil {
+		panic(errors.Wrap(err, "parsing flag"))
+	}
+
+	if _, err := checkVersion(); err != nil {
+		panic(errors.Wrap(err, "checking version"))
+	}
+
+}
