@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"regexp"
 	"time"
 
 	"github.com/dnote/fileutils"
@@ -67,7 +68,8 @@ func restoreBackup(backupPath string) error {
 		}
 	}()
 
-	srcPath := fmt.Sprintf("%s/.dnote", *homeDirPath)
+	srcPath := getDnoteDirPath()
+	debug("restoring %s to %s", backupPath, srcPath)
 
 	if err = os.RemoveAll(srcPath); err != nil {
 		return errors.Wrapf(err, "Failed to clear current dnote data at %s", backupPath)
@@ -96,14 +98,19 @@ func checkVersion() (string, error) {
 		return "", errors.Wrap(err, "running dnote version")
 	}
 
-	fmt.Println(stdout.String())
+	versionOutput := stdout.String()
+	r := regexp.MustCompile(`dnote (\d+\.\d+\.\d+)`)
+	matches := r.FindStringSubmatch(versionOutput)
+	if len(matches) == 0 {
+		return "", errors.Errorf("unrecognized version output: %s", stdout.String())
+	}
 
 	err = restoreBackup(backupPath)
 	if err != nil {
 		return "", errors.Wrap(err, "restoring backup")
 	}
 
-	return "", nil
+	return matches[1], nil
 }
 
 func parseFlag() error {
@@ -129,8 +136,11 @@ func main() {
 		panic(errors.Wrap(err, "parsing flag"))
 	}
 
-	if _, err := checkVersion(); err != nil {
+	version, err := checkVersion()
+	if err != nil {
 		panic(errors.Wrap(err, "checking version"))
 	}
+
+	debug("using version %s", version)
 
 }
