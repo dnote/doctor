@@ -82,10 +82,12 @@ func restoreBackup(backupPath string) error {
 	return nil
 }
 
-func checkVersion() (string, error) {
+func checkVersion() (semver, error) {
+	var ret semver
+
 	backupPath, err := backupDnoteDir(backupModeRename)
 	if err != nil {
-		return "", errors.Wrap(err, "backing up dnote")
+		return ret, errors.Wrap(err, "backing up dnote")
 	}
 
 	cmd := exec.Command("dnote", "version")
@@ -95,22 +97,28 @@ func checkVersion() (string, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", errors.Wrap(err, "running dnote version")
+		return ret, errors.Wrap(err, "running dnote version")
 	}
 
-	versionOutput := stdout.String()
+	out := stdout.String()
 	r := regexp.MustCompile(`dnote (\d+\.\d+\.\d+)`)
-	matches := r.FindStringSubmatch(versionOutput)
+	matches := r.FindStringSubmatch(out)
 	if len(matches) == 0 {
-		return "", errors.Errorf("unrecognized version output: %s", stdout.String())
+		return ret, errors.Errorf("unrecognized version output: %s", stdout.String())
+	}
+
+	v := matches[1]
+	ret, err = parseSemver(v)
+	if err != nil {
+		return ret, errors.Wrap(err, "parsing semver")
 	}
 
 	err = restoreBackup(backupPath)
 	if err != nil {
-		return "", errors.Wrap(err, "restoring backup")
+		return ret, errors.Wrap(err, "restoring backup")
 	}
 
-	return matches[1], nil
+	return ret, nil
 }
 
 func parseFlag() error {
@@ -141,6 +149,13 @@ func main() {
 		panic(errors.Wrap(err, "checking version"))
 	}
 
-	debug("using version %s", version)
+	debug("using version %d.%d.%d", version.Major, version.Minor, version.Patch)
+
+	issues, err := scanIssues(version)
+	if err != nil {
+		panic(errors.Wrap(err, "scanning issues"))
+	}
+
+	debug("%d issues apply to this version", len(issues))
 
 }
