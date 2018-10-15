@@ -1,40 +1,19 @@
 package main
 
 import (
-	"regexp"
-	"strconv"
-
-	"github.com/pkg/errors"
+	"github.com/dnote/doctor/semver"
 )
-
-type semver struct {
-	Major int
-	Minor int
-	Patch int
-}
 
 type issue struct {
 	name       string
-	minVersion *semver
-	maxVersion *semver
+	minVersion *semver.Version
+	maxVersion *semver.Version
 	desc       string
 	fix        func() (bool, error)
 }
 
-func (s1 semver) lte(s2 semver) bool {
-	return s1.Major < s2.Major || s1.Minor < s2.Minor || s1.Patch < s2.Patch
-}
-func (s1 semver) gte(s2 semver) bool {
-	return s1.Major >= s2.Major || s1.Minor >= s2.Minor || s1.Patch >= s2.Patch
-}
-
-func (i issue) relevant(version semver) bool {
-	return (i.minVersion == nil || version.gte(*i.minVersion)) &&
-		(i.maxVersion == nil || version.lte(*i.maxVersion))
-}
-
 var (
-	v0_2_0 = semver{Major: 0, Minor: 2, Patch: 0}
+	v0_2_0 = semver.Version{Major: 0, Minor: 2, Patch: 0}
 )
 
 var i1 = issue{
@@ -50,48 +29,11 @@ The cause may be related to sync but is unknown. But will no longer possible in 
 	},
 }
 
+func (i issue) relevant(version semver.Version) bool {
+	return (i.minVersion == nil || version.Gte(*i.minVersion)) &&
+		(i.maxVersion == nil || version.Lte(*i.maxVersion))
+}
+
 var issues = []issue{
 	i1,
-}
-
-func parseSemver(version string) (semver, error) {
-	re := regexp.MustCompile(`(\d*)\.(\d*)\.(\d*)`)
-	match := re.FindStringSubmatch(version)
-
-	if len(match) != 4 {
-		return semver{}, errors.Errorf("invalid semver %s", version)
-	}
-
-	major, err := strconv.Atoi(match[1])
-	if err != nil {
-		return semver{}, errors.Wrap(err, "converting major version to int")
-	}
-	minor, err := strconv.Atoi(match[2])
-	if err != nil {
-		return semver{}, errors.Wrap(err, "converting minor version to int")
-	}
-	patch, err := strconv.Atoi(match[3])
-	if err != nil {
-		return semver{}, errors.Wrap(err, "converting patch version to int")
-	}
-
-	ret := semver{
-		Major: major,
-		Minor: minor,
-		Patch: patch,
-	}
-
-	return ret, nil
-}
-
-func scanIssues(version semver) ([]issue, error) {
-	var ret []issue
-
-	for _, i := range issues {
-		if i.relevant(version) {
-			ret = append(ret, i)
-		}
-	}
-
-	return ret, nil
 }

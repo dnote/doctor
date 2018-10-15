@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/dnote/doctor/semver"
 	"github.com/dnote/fileutils"
 	"github.com/pkg/errors"
 )
@@ -82,8 +83,39 @@ func restoreBackup(backupPath string) error {
 	return nil
 }
 
-func checkVersion() (semver, error) {
-	var ret semver
+func fixIssue(i issue) (bool, error) {
+	backupPath, err := backupDnoteDir(backupModeCopy)
+	if err != nil {
+		return false, errors.Wrap(err, "backing up dnote")
+	}
+
+	ok, err := i.fix()
+	if err != nil {
+		return false, errors.Wrap(err, "diagnosing")
+	}
+
+	err = restoreBackup(backupPath)
+	if err != nil {
+		return false, errors.Wrap(err, "restoring backup")
+	}
+
+	return ok, nil
+}
+
+func scanIssues(version semver.Version) ([]issue, error) {
+	var ret []issue
+
+	for _, i := range issues {
+		if i.relevant(version) {
+			ret = append(ret, i)
+		}
+	}
+
+	return ret, nil
+}
+
+func checkVersion() (semver.Version, error) {
+	var ret semver.Version
 
 	backupPath, err := backupDnoteDir(backupModeRename)
 	if err != nil {
@@ -108,7 +140,7 @@ func checkVersion() (semver, error) {
 	}
 
 	v := matches[1]
-	ret, err = parseSemver(v)
+	ret, err = semver.Parse(v)
 	if err != nil {
 		return ret, errors.Wrap(err, "parsing semver")
 	}
@@ -158,4 +190,20 @@ func main() {
 
 	debug("%d issues apply to this version", len(issues))
 
+	for _, i := range issues {
+		fmt.Printf("diagnosing: %s...\n", i.name)
+
+		ok, err := fixIssue(i)
+		if err != nil {
+			fmt.Println(errors.Wrapf(err, "⨯ Failed to diagnose %s", i.name))
+		}
+
+		if ok {
+			fmt.Println("✔ fixed")
+		} else {
+			fmt.Println("✔ no issue found")
+		}
+	}
+
+	fmt.Println("✔ success")
 }
