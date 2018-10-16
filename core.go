@@ -25,10 +25,14 @@ type noteV0_4_0V0_4_4 struct {
 	Public   bool   `json:"public"`
 }
 
+func getJSONDnotePath(ctx Ctx) string {
+	return fmt.Sprintf("%s/.dnote/dnote", ctx.homeDirPath)
+}
+
 func readJSONDnote(ctx Ctx) (json.RawMessage, error) {
 	var books json.RawMessage
 
-	notePath := fmt.Sprintf("%s/.dnote/dnote", ctx.homeDirPath)
+	notePath := getJSONDnotePath(ctx)
 	b, err := ioutil.ReadFile(notePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading note content")

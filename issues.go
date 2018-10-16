@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"sort"
 
 	"github.com/dnote/doctor/semver"
+	"github.com/dnote/fileutils"
 	"github.com/pkg/errors"
 )
 
@@ -31,6 +31,12 @@ Duplicates have the same added_on but successively incrementing edited_on values
 Therefore the fix is to simply take the note with the latest edited_on value and discard the outdated ones.
 The cause may be related to sync but is unknown. But will no longer possible in v0.4.5 and above because SQLite imposes uniqueness constraint on note uuid.`,
 	fix: func(ctx Ctx) (bool, error) {
+		// if a legacy json dnote is not found, do not proceed
+		notePath := getJSONDnotePath(ctx)
+		if !fileutils.Exists(notePath) {
+			return false, nil
+		}
+
 		diagnosed := false
 
 		rawDnote, err := readJSONDnote(ctx)
@@ -87,8 +93,6 @@ The cause may be related to sync but is unknown. But will no longer possible in 
 				diagnosed = true
 				i = j + 1
 
-				fmt.Println("dupe!")
-
 				if next.content.EditedOn > current.content.EditedOn {
 					current = next
 				}
@@ -122,7 +126,6 @@ The cause may be related to sync but is unknown. But will no longer possible in 
 			return diagnosed, errors.Wrap(err, "marhsalling deduplicated dnote")
 		}
 
-		notePath := fmt.Sprintf("%s/.dnote/dnote", ctx.homeDirPath)
 		err = ioutil.WriteFile(notePath, d, 0644)
 		if err != nil {
 			return diagnosed, errors.Wrap(err, "writing dnote file")
