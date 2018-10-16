@@ -24,6 +24,12 @@ const (
 	backupModeRename
 )
 
+// Ctx holds runtime configuration of dnote doctor
+type Ctx struct {
+	version     semver.Version
+	homeDirPath string
+}
+
 func debug(msg string, v ...interface{}) {
 	if os.Getenv("DNOTE_DOCTOR_DEBUG") == "1" {
 		fmt.Printf("DEBUG: %s\n", fmt.Sprintf(msg, v...))
@@ -83,20 +89,15 @@ func restoreBackup(backupPath string) error {
 	return nil
 }
 
-func fixIssue(i issue) (bool, error) {
-	backupPath, err := backupDnoteDir(backupModeCopy)
+func fixIssue(i issue, ctx Ctx) (bool, error) {
+	_, err := backupDnoteDir(backupModeCopy)
 	if err != nil {
 		return false, errors.Wrap(err, "backing up dnote")
 	}
 
-	ok, err := i.fix()
+	ok, err := i.fix(ctx)
 	if err != nil {
 		return false, errors.Wrap(err, "diagnosing")
-	}
-
-	err = restoreBackup(backupPath)
-	if err != nil {
-		return false, errors.Wrap(err, "restoring backup")
 	}
 
 	return ok, nil
@@ -169,6 +170,13 @@ func parseFlag() error {
 	return nil
 }
 
+func newCtx(version semver.Version) Ctx {
+	return Ctx{
+		version:     version,
+		homeDirPath: *homeDirPath,
+	}
+}
+
 func main() {
 	os.Setenv("DNOTE_DOCTOR_DEBUG", "1")
 
@@ -190,12 +198,15 @@ func main() {
 
 	debug("%d issues apply to this version", len(issues))
 
+	ctx := newCtx(version)
+
 	for _, i := range issues {
 		fmt.Printf("diagnosing: %s...\n", i.name)
 
-		ok, err := fixIssue(i)
+		ok, err := fixIssue(i, ctx)
 		if err != nil {
 			fmt.Println(errors.Wrapf(err, "⨯ Failed to diagnose %s", i.name))
+			continue
 		}
 
 		if ok {
@@ -205,5 +216,5 @@ func main() {
 		}
 	}
 
-	fmt.Println("✔ success")
+	fmt.Println("✔ done")
 }
