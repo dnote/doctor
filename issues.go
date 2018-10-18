@@ -19,12 +19,12 @@ type issue struct {
 }
 
 var (
-	v0_2_0 = semver.Version{Major: 0, Minor: 4, Patch: 0}
+	v0_4_0 = semver.Version{Major: 0, Minor: 4, Patch: 0}
 )
 
 var i1 = issue{
 	name:       "duplicate-json-note-uuid",
-	minVersion: &v0_2_0,
+	minVersion: &v0_4_0,
 	maxVersion: nil,
 	desc: `Under 0.4.4, some notes have duplicate uuids if they were edited.
 Duplicates have the same added_on but successively incrementing edited_on values.

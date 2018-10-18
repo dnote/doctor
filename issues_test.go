@@ -209,3 +209,18 @@ func TestIssue1(t *testing.T) {
 		t.Errorf("dnote content mismatch. diff: %s", cmp.Diff(expected, got))
 	}
 }
+
+func TestIssue1_no_json_dnote(t *testing.T) {
+	// set up
+	ctx := initCtx(t, semver.Version{Major: 0, Minor: 4, Patch: 0})
+	defer teardownEnv(ctx)
+
+	// execute
+	ok, err := i1.fix(ctx)
+	if err != nil {
+		t.Fatalf(errors.Wrap(err, "failing to fix").Error())
+	}
+
+	// test
+	testutils.AssertEqual(t, ok, false, "diagnosed mismatch")
+}
