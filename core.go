@@ -26,7 +26,7 @@ type noteV0_4_0V0_4_4 struct {
 }
 
 func getJSONDnotePath(ctx Ctx) string {
-	return fmt.Sprintf("%s/.dnote/dnote", ctx.homeDirPath)
+	return fmt.Sprintf("%s/dnote", ctx.dnoteDirPath)
 }
 
 func readJSONDnote(ctx Ctx) (json.RawMessage, error) {

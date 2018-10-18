@@ -67,14 +67,21 @@ The cause may be related to sync but is unknown. But will no longer possible in 
 			}
 		}
 
-		// sort by uuid
+		// sort by uuid and then edited_on
 		sort.Slice(tmpNotes, func(i, j int) bool {
-			return tmpNotes[i].content.UUID <= tmpNotes[j].content.UUID
+			ni := tmpNotes[i]
+			nj := tmpNotes[j]
+
+			if ni.content.UUID == nj.content.UUID {
+				return ni.content.EditedOn <= nj.content.EditedOn
+			}
+
+			return ni.content.UUID <= nj.content.UUID
 		})
 
 		// remove duplicates
 		deduped := []tmpNote{}
-		for i := 0; i < len(tmpNotes); {
+		for i := 0; i < len(tmpNotes); i++ {
 			current := tmpNotes[i]
 
 			if i == len(tmpNotes)-1 {
@@ -82,23 +89,12 @@ The cause may be related to sync but is unknown. But will no longer possible in 
 				break
 			}
 
-			for j := i + 1; j < len(tmpNotes); j++ {
-				next := tmpNotes[j]
-
-				if current.content.UUID != next.content.UUID {
-					i++
-					break
-				}
-
+			next := tmpNotes[i+1]
+			if current.content.UUID != next.content.UUID {
+				deduped = append(deduped, current)
+			} else {
 				diagnosed = true
-				i = j + 1
-
-				if next.content.EditedOn > current.content.EditedOn {
-					current = next
-				}
 			}
-
-			deduped = append(deduped, current)
 		}
 
 		// put notes back to dnote structure

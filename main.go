@@ -26,8 +26,9 @@ const (
 
 // Ctx holds runtime configuration of dnote doctor
 type Ctx struct {
-	version     semver.Version
-	homeDirPath string
+	version      semver.Version
+	homeDirPath  string
+	dnoteDirPath string
 }
 
 func debug(msg string, v ...interface{}) {
@@ -172,8 +173,9 @@ func parseFlag() error {
 
 func newCtx(version semver.Version) Ctx {
 	return Ctx{
-		version:     version,
-		homeDirPath: *homeDirPath,
+		version:      version,
+		homeDirPath:  *homeDirPath,
+		dnoteDirPath: fmt.Sprintf("%s/.dnote", *homeDirPath),
 	}
 }
 
