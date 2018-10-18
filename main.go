@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/dnote/doctor/semver"
 	"github.com/dnote/fileutils"
 	"github.com/pkg/errors"
 )
@@ -22,6 +23,13 @@ const (
 	backupModeCopy = iota
 	backupModeRename
 )
+
+// Ctx holds runtime configuration of dnote doctor
+type Ctx struct {
+	version      semver.Version
+	homeDirPath  string
+	dnoteDirPath string
+}
 
 func debug(msg string, v ...interface{}) {
 	if os.Getenv("DNOTE_DOCTOR_DEBUG") == "1" {
@@ -82,10 +90,38 @@ func restoreBackup(backupPath string) error {
 	return nil
 }
 
-func checkVersion() (string, error) {
+func fixIssue(i issue, ctx Ctx) (bool, error) {
+	_, err := backupDnoteDir(backupModeCopy)
+	if err != nil {
+		return false, errors.Wrap(err, "backing up dnote")
+	}
+
+	ok, err := i.fix(ctx)
+	if err != nil {
+		return false, errors.Wrap(err, "diagnosing")
+	}
+
+	return ok, nil
+}
+
+func scanIssues(version semver.Version) ([]issue, error) {
+	var ret []issue
+
+	for _, i := range issues {
+		if i.relevant(version) {
+			ret = append(ret, i)
+		}
+	}
+
+	return ret, nil
+}
+
+func checkVersion() (semver.Version, error) {
+	var ret semver.Version
+
 	backupPath, err := backupDnoteDir(backupModeRename)
 	if err != nil {
-		return "", errors.Wrap(err, "backing up dnote")
+		return ret, errors.Wrap(err, "backing up dnote")
 	}
 
 	cmd := exec.Command("dnote", "version")
@@ -95,22 +131,28 @@ func checkVersion() (string, error) {
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", errors.Wrap(err, "running dnote version")
+		return ret, errors.Wrap(err, "running dnote version")
 	}
 
-	versionOutput := stdout.String()
+	out := stdout.String()
 	r := regexp.MustCompile(`dnote (\d+\.\d+\.\d+)`)
-	matches := r.FindStringSubmatch(versionOutput)
+	matches := r.FindStringSubmatch(out)
 	if len(matches) == 0 {
-		return "", errors.Errorf("unrecognized version output: %s", stdout.String())
+		return ret, errors.Errorf("unrecognized version output: %s", stdout.String())
+	}
+
+	v := matches[1]
+	ret, err = semver.Parse(v)
+	if err != nil {
+		return ret, errors.Wrap(err, "parsing semver")
 	}
 
 	err = restoreBackup(backupPath)
 	if err != nil {
-		return "", errors.Wrap(err, "restoring backup")
+		return ret, errors.Wrap(err, "restoring backup")
 	}
 
-	return matches[1], nil
+	return ret, nil
 }
 
 func parseFlag() error {
@@ -129,9 +171,15 @@ func parseFlag() error {
 	return nil
 }
 
-func main() {
-	os.Setenv("DNOTE_DOCTOR_DEBUG", "1")
+func newCtx(version semver.Version) Ctx {
+	return Ctx{
+		version:      version,
+		homeDirPath:  *homeDirPath,
+		dnoteDirPath: fmt.Sprintf("%s/.dnote", *homeDirPath),
+	}
+}
 
+func main() {
 	if err := parseFlag(); err != nil {
 		panic(errors.Wrap(err, "parsing flag"))
 	}
@@ -141,6 +189,32 @@ func main() {
 		panic(errors.Wrap(err, "checking version"))
 	}
 
-	debug("using version %s", version)
+	debug("using version %d.%d.%d", version.Major, version.Minor, version.Patch)
 
+	issues, err := scanIssues(version)
+	if err != nil {
+		panic(errors.Wrap(err, "scanning issues"))
+	}
+
+	debug("%d issues apply to this version", len(issues))
+
+	ctx := newCtx(version)
+
+	for _, i := range issues {
+		fmt.Printf("diagnosing: %s...\n", i.name)
+
+		ok, err := fixIssue(i, ctx)
+		if err != nil {
+			fmt.Println(errors.Wrapf(err, "⨯ Failed to diagnose %s", i.name))
+			continue
+		}
+
+		if ok {
+			fmt.Println("✔ fixed")
+		} else {
+			fmt.Println("✔ no issue found")
+		}
+	}
+
+	fmt.Println("✔ done")
 }
