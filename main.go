@@ -180,8 +180,6 @@ func newCtx(version semver.Version) Ctx {
 }
 
 func main() {
-	os.Setenv("DNOTE_DOCTOR_DEBUG", "1")
-
 	if err := parseFlag(); err != nil {
 		panic(errors.Wrap(err, "parsing flag"))
 	}

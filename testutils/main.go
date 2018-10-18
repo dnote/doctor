@@ -2,55 +2,15 @@
 package testutils
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
-	"os/exec"
-	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
-	"github.com/dnote/cli/infra"
-	"github.com/dnote/cli/utils"
 	"github.com/pkg/errors"
 )
-
-// CopyFixture writes the content of the given fixture to the filename inside the dnote dir
-func CopyFixture(ctx infra.DnoteCtx, fixturePath string, filename string) {
-	fp, err := filepath.Abs(fixturePath)
-	if err != nil {
-		panic(err)
-	}
-	dp, err := filepath.Abs(filepath.Join(ctx.DnoteDir, filename))
-	if err != nil {
-		panic(err)
-	}
-
-	err = utils.CopyFile(fp, dp)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// ReadFileAbs reads the content of the file with the given file path by resolving
-// it as an absolute path
-func ReadFileAbs(relpath string) []byte {
-	fp, err := filepath.Abs(relpath)
-	if err != nil {
-		panic(err)
-	}
-
-	b, err := ioutil.ReadFile(fp)
-	if err != nil {
-		panic(err)
-	}
-
-	return b
-}
 
 func checkEqual(a interface{}, b interface{}, message string) (bool, string) {
 	if a == b {
@@ -142,102 +102,6 @@ func MustExec(t *testing.T, message string, db *sql.DB, query string, args ...in
 	}
 
 	return result
-}
-
-// MustScan scans the given row and fails a test in case of any errors
-func MustScan(t *testing.T, message string, row *sql.Row, args ...interface{}) {
-	err := row.Scan(args...)
-	if err != nil {
-		t.Fatal(errors.Wrap(errors.Wrap(err, "scanning a row"), message))
-	}
-}
-
-// NewDnoteCmd returns a new Dnote command and a pointer to stderr
-func NewDnoteCmd(ctx infra.DnoteCtx, binaryName string, arg ...string) (*exec.Cmd, *bytes.Buffer, *bytes.Buffer, error) {
-	var stderr, stdout bytes.Buffer
-
-	binaryPath, err := filepath.Abs(binaryName)
-	if err != nil {
-		return &exec.Cmd{}, &stderr, &stdout, errors.Wrap(err, "getting the absolute path to the test binary")
-	}
-
-	cmd := exec.Command(binaryPath, arg...)
-	cmd.Env = []string{fmt.Sprintf("DNOTE_DIR=%s", ctx.DnoteDir), fmt.Sprintf("DNOTE_HOME_DIR=%s", ctx.HomeDir)}
-	cmd.Stderr = &stderr
-	cmd.Stdout = &stdout
-
-	return cmd, &stderr, &stdout, nil
-}
-
-// RunDnoteCmd runs a dnote command
-func RunDnoteCmd(t *testing.T, ctx infra.DnoteCtx, binaryName string, arg ...string) {
-	t.Logf("running: %s %s", binaryName, strings.Join(arg, " "))
-
-	cmd, stderr, stdout, err := NewDnoteCmd(ctx, binaryName, arg...)
-	if err != nil {
-		t.Logf("\n%s", stdout)
-		t.Fatal(errors.Wrap(err, "getting command").Error())
-	}
-
-	cmd.Env = append(cmd.Env, "DNOTE_DEBUG=1")
-
-	if err := cmd.Run(); err != nil {
-		t.Logf("\n%s", stdout)
-		t.Fatal(errors.Wrapf(err, "running command %s", stderr.String()))
-	}
-
-	// Print stdout if and only if test fails later
-	t.Logf("\n%s", stdout)
-}
-
-// WaitDnoteCmd runs a dnote command and waits until the command is exited
-func WaitDnoteCmd(t *testing.T, ctx infra.DnoteCtx, runFunc func(io.WriteCloser) error, binaryName string, arg ...string) {
-	t.Logf("running: %s %s", binaryName, strings.Join(arg, " "))
-
-	cmd, stderr, stdout, err := NewDnoteCmd(ctx, binaryName, arg...)
-	if err != nil {
-		t.Logf("\n%s", stdout)
-		t.Fatal(errors.Wrap(err, "getting command").Error())
-	}
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		t.Logf("\n%s", stdout)
-		t.Fatal(errors.Wrap(err, "getting stdin %s"))
-	}
-	defer stdin.Close()
-
-	// Start the program
-	err = cmd.Start()
-	if err != nil {
-		t.Logf("\n%s", stdout)
-		t.Fatal(errors.Wrap(err, "starting command"))
-	}
-
-	err = runFunc(stdin)
-	if err != nil {
-		t.Logf("\n%s", stdout)
-		t.Fatal(errors.Wrap(err, "running with stdin"))
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		t.Logf("\n%s", stdout)
-		t.Fatal(errors.Wrapf(err, "running command %s", stderr.String()))
-	}
-
-	// Print stdout if and only if test fails later
-	t.Logf("\n%s", stdout)
-}
-
-// UserConfirm simulates confirmation from the user by writing to stdin
-func UserConfirm(stdin io.WriteCloser) error {
-	// confirm
-	if _, err := io.WriteString(stdin, "y\n"); err != nil {
-		return errors.Wrap(err, "confirming deletion")
-	}
-
-	return nil
 }
 
 // MustMarshalJSON marshalls the given interface into JSON.
