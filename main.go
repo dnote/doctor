@@ -24,6 +24,8 @@ const (
 	backupModeRename
 )
 
+// TODO: build with version
+
 // Ctx holds runtime configuration of dnote doctor
 type Ctx struct {
 	version      semver.Version
