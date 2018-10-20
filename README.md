@@ -1,6 +1,6 @@
 # Dnote Doctor
 
-A utility to automatically fix any issues with local Dnote.
+A utility to automatically fix any issues with local version of [Dnote](https://github.com/dnote/cli).
 
 ## Installation
 
@@ -19,6 +19,12 @@ Otherwise, you can download the binary for your platform manually from the [rele
 ```bash
 dnote-doctor
 ```
+
+The program will:
+
+* detect the version of the Dnote installed on the system
+* diagnose any possible issues applicable to the version
+* automatically resolve issues, if any.
 
 ## LICENSE
 

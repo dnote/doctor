@@ -39,17 +39,20 @@ build() {
   pushd "$basedir"
 
   # build linux
-  xgo --targets="linux/amd64" .
+  xgo --targets="linux/amd64"\
+    -ldflags "-X main.versionTag=$version" .
   mkdir "$TMP/linux"
   mv doctor-linux-amd64 "$TMP/linux/dnote"
 
   # build darwin
-  xgo --targets="darwin/amd64" .
+  xgo --targets="darwin/amd64"\
+    -ldflags "-X main.versionTag=$version" .
   mkdir "$TMP/darwin"
   mv doctor-darwin-10.6-amd64 "$TMP/darwin/dnote"
 
   # build windows
-  xgo --targets="windows/amd64" .
+  xgo --targets="windows/amd64"\
+    -ldflags "-X main.versionTag=$version" .
   mkdir "$TMP/windows"
   mv doctor-windows-4.0-amd64.exe "$TMP/windows/dnote.exe"
 
