@@ -53,7 +53,7 @@ func getDnoteDirPath() string {
 // backupDnoteDir backs up the dnote directory to a temporary backup directory
 func backupDnoteDir(mode int) (string, error) {
 	dnoteDirPath := getDnoteDirPath()
-	backupName := fmt.Sprintf(".dnote-backup-%d", time.Now().Unix())
+	backupName := fmt.Sprintf(".dnote-backup-%d", time.Now().UnixNano())
 	backupPath := fmt.Sprintf("%s/%s", *homeDirPath, backupName)
 
 	debug("backing up %s to %s", dnoteDirPath, backupPath)
