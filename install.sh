@@ -139,7 +139,7 @@ install_dnote() {
     exit 1
   fi
 
-  binary=dnote
+  binary=dnote_doctor
   owner=dnote
   repo=doctor
   github_download="https://github.com/${owner}/${repo}/releases/download"
