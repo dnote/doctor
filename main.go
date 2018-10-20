@@ -77,15 +77,19 @@ func backupDnoteDir(mode int) (string, error) {
 func restoreBackup(backupPath string) error {
 	var err error
 
+	srcPath := getDnoteDirPath()
+
 	defer func() {
 		if err != nil {
 			fmt.Printf(`Failed to restore backup from dnote doctor.
-	Don't worry. Your data is still intact in the backup.
-	Please reach out on https://github.com/dnote/cli/issues so that we can help you.`)
+Don't worry. Your data is still intact in the backup directory: %s
+You can manually restore the backup by moving that directory to %s
+
+Please reach out on https://github.com/dnote/cli/issues so that we can help you.
+`, backupPath, srcPath)
 		}
 	}()
 
-	srcPath := getDnoteDirPath()
 	debug("restoring %s to %s", backupPath, srcPath)
 
 	if err = os.RemoveAll(srcPath); err != nil {
@@ -100,14 +104,23 @@ func restoreBackup(backupPath string) error {
 }
 
 func fixIssue(i issue, ctx Ctx) (bool, error) {
-	_, err := backupDnoteDir(backupModeCopy)
+	backupPath, err := backupDnoteDir(backupModeCopy)
 	if err != nil {
 		return false, errors.Wrap(err, "backing up dnote")
 	}
 
 	ok, err := i.fix(ctx)
 	if err != nil {
+		if e := restoreBackup(backupPath); e != nil {
+			panic(errors.Wrap(e, "restoring backup"))
+		}
+
 		return false, errors.Wrap(err, "diagnosing")
+	}
+
+	debug("fix complete. removing backup %s", backupPath)
+	if err := os.RemoveAll(backupPath); err != nil {
+		fmt.Println(errors.Wrapf(err, "could not remove the backup %s", backupPath))
 	}
 
 	return ok, nil
@@ -230,7 +243,9 @@ func main() {
 
 		ok, err := fixIssue(i, ctx)
 		if err != nil {
-			fmt.Println(errors.Wrapf(err, "⨯ Failed to diagnose %s", i.name))
+			fmt.Println(errors.Wrapf(err, "⨯ Failed to diagnose and fix %s", i.name))
+			fmt.Println(`Don't worry. Your data has not been affected.
+Please reach out on https://github.com/dnote/cli/issues so that we can help you.`)
 			continue
 		}
 
