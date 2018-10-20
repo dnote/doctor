@@ -42,19 +42,19 @@ build() {
   xgo --targets="linux/amd64"\
     -ldflags "-X main.versionTag=$version" .
   mkdir "$TMP/linux"
-  mv doctor-linux-amd64 "$TMP/linux/dnote"
+  mv doctor-linux-amd64 "$TMP/linux/dnote-doctor"
 
   # build darwin
   xgo --targets="darwin/amd64"\
     -ldflags "-X main.versionTag=$version" .
   mkdir "$TMP/darwin"
-  mv doctor-darwin-10.6-amd64 "$TMP/darwin/dnote"
+  mv doctor-darwin-10.6-amd64 "$TMP/darwin/dnote-doctor"
 
   # build windows
   xgo --targets="windows/amd64"\
     -ldflags "-X main.versionTag=$version" .
   mkdir "$TMP/windows"
-  mv doctor-windows-4.0-amd64.exe "$TMP/windows/dnote.exe"
+  mv doctor-windows-4.0-amd64.exe "$TMP/windows/dnote-doctor.exe"
 
   popd
 }
@@ -71,9 +71,9 @@ calc_checksum() {
   pushd "$TMP/$os"
 
   buildname=$(get_buildname "$os")
-  mv dnote "$buildname"
+  mv dnote-doctor "$buildname"
   shasum -a 256 "$buildname" >> "$TMP/dnote_doctor_${version}_checksums.txt"
-  mv "$buildname" dnote
+  mv "$buildname" dnote-doctor
 
   popd
 }
