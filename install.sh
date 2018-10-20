@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# This script installs Dnote into your PATH (/usr/bin/local)
+# This script installs dnote-doctor into your PATH (/usr/bin/local)
 # Use it like this:
 # $ curl https://raw.githubusercontent.com/dnote/doctor/master/install.sh | sh
 #
@@ -183,7 +183,7 @@ install_dnote() {
   install -d "${bindir}"
   install "${tmpdir}/${binary}" "${bindir}/"
 
-  print_success "dnote v${version} was successfully installed in $bindir."
+  print_success "dnote-doctor v${version} was successfully installed in $bindir."
 }
 
 
