@@ -62,7 +62,7 @@ build() {
 get_buildname() {
   os=$1
 
-  echo "dnote_doctor_${version}_${os}_amd64"
+  echo "dnote-doctor-${version}-${os}-amd64"
 }
 
 calc_checksum() {
@@ -72,7 +72,7 @@ calc_checksum() {
 
   buildname=$(get_buildname "$os")
   mv dnote-doctor "$buildname"
-  shasum -a 256 "$buildname" >> "$TMP/dnote_doctor_${version}_checksums.txt"
+  shasum -a 256 "$buildname" >> "$TMP/dnote-doctor-${version}-checksums.txt"
   mv "$buildname" dnote-doctor
 
   popd

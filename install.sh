@@ -139,7 +139,7 @@ install_dnote() {
     exit 1
   fi
 
-  binary=dnote_doctor
+  binary=dnote-doctor
   owner=dnote
   repo=doctor
   github_download="https://github.com/${owner}/${repo}/releases/download"
@@ -159,8 +159,8 @@ install_dnote() {
   # remove the preceding 'v'
   version="${version#v}"
 
-  checksum=${binary}_${version}_checksums.txt
-  filename=${binary}_${version}_${os}_${arch}
+  checksum=${binary}-${version}-checksums.txt
+  filename=${binary}-${version}-${os}-${arch}
   tarball="${filename}.tar.gz"
   binary_url="${github_download}/v${version}/${tarball}"
   checksum_url="${github_download}/v${version}/${checksum}"
