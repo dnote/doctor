@@ -24,6 +24,15 @@ const (
 	backupModeRename
 )
 
+var versionTag = "master"
+var helpText = `dnote-doctor
+
+Automatically diagnose and fix any issues with local dnote copy.
+
+Usage:
+$ dnote-doctor
+`
+
 // Ctx holds runtime configuration of dnote doctor
 type Ctx struct {
 	version      semver.Version
@@ -182,6 +191,22 @@ func newCtx(version semver.Version) Ctx {
 func main() {
 	if err := parseFlag(); err != nil {
 		panic(errors.Wrap(err, "parsing flag"))
+	}
+
+	args := os.Args
+	if len(args) > 1 {
+		cmd := args[1]
+
+		if cmd == "version" {
+			fmt.Printf("dnote-doctor %s\n", versionTag)
+			return
+		} else if cmd == "help" {
+			fmt.Println(helpText)
+			return
+		}
+
+		fmt.Printf("unknwon command %s\n", cmd)
+		return
 	}
 
 	version, err := checkVersion()
