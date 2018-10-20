@@ -30,4 +30,4 @@ The program will:
 
 GPL
 
-[![Build Status](https://travis-ci.org/dnote/dnote-doctor.svg?branch=master)](https://travis-ci.org/dnote/dnote-doctor)
+[![Build Status](https://travis-ci.org/dnote/doctor.svg?branch=master)](https://travis-ci.org/dnote/doctor)
